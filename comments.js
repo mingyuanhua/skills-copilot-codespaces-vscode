@@ -1,51 +1,37 @@
 // Create web server
 
-const express = require('express');
-const bodyParser = require('body-parser');
-const app = express();
-const port = 3000;
+// Run server: node comments.js
+// Test: curl -X POST -H "Content-Type: application/json" -d '{"body":"Hello world"}' http://localhost:3000/comments
 
-// Parse application/x-www-form-urlencoded
-app.use(bodyParser.urlencoded({ extended: false }));
+const http = require('http');
+const url = require('url');
+const qs = require('querystring');
 
-// Parse application/json
-app.use(bodyParser.json());
+let comments = [];
 
-// Serve static files
-app.use(express.static('public'));
+const server = http.createServer((req, res) => {
+  const { pathname, query } = url.parse(req.url, true);
 
-// Get comments
-app.get('/comments', (req, res) => {
-  res.json(comments);
-});
-
-// Add comment
-app.post('/comments', (req, res) => {
-  const comment = req.body;
-  comment.id = comments.length;
-  comments.push(comment);
-  res.json(comment);
-});
-
-// Delete comment
-app.delete('/comments/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  const comment = comments.find(comment => comment.id === id);
-
-  if (!comment) {
-    res.sendStatus(404);
+  if (pathname === '/comments') {
+    if (req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(comments));
+    } else if (req.method === 'POST') {
+      let body = '';
+      req.on('data', (data) => {
+        body += data;
+      });
+      req.on('end', () => {
+        const comment = qs.parse(body);
+        comments.push(comment);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(comment));
+      });
+    }
   } else {
-    comments = comments.filter(comment => comment.id !== id);
-    res.sendStatus(204);
+    res.statusCode = 404;
+    res.end('Not Found');
   }
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
-});
-
-// Comments
-let comments = [
-  {
-    id: 0,
+server.listen(3000);
